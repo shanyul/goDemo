@@ -9,20 +9,26 @@ import (
 type H map[string]interface{}
 
 type Context struct {
-	Writer http.ResponseWriter
-	Req *http.Request
-	Method string
-	Path string
+	Writer     http.ResponseWriter
+	Req        *http.Request
+	Method     string
+	Path       string
+	Params     map[string]string
 	StatusCode int
 }
 
 func newContext(w http.ResponseWriter, req *http.Request) *Context {
 	return &Context{
 		Writer: w,
-		Req: req,
+		Req:    req,
 		Method: req.Method,
-		Path: req.URL.Path,
+		Path:   req.URL.Path,
 	}
+}
+
+func (c *Context) Param(key string) string {
+	value, _ := c.Params[key]
+	return value
 }
 
 func (c *Context) PostForm(key string) string {
