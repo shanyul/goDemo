@@ -3,15 +3,19 @@ package routers
 import (
 	"log"
 	"net/http"
+	"path"
 	"strings"
+	"text/template"
 )
 
 type HandlerFunc func(*Context)
 
 type Engine struct {
 	*RouterGroup
-	router *router
-	groups []*RouterGroup
+	router        *router
+	groups        []*RouterGroup
+	htmlTemplates *template.Template
+	funcMap       template.FuncMap
 }
 
 type RouterGroup struct {
@@ -63,14 +67,46 @@ func (engine *Engine) Run(addr string) (err error) {
 	return http.ListenAndServe(addr, engine)
 }
 
-func (engie *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (engine *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var middlewares []HandlerFunc
-	for _, group := range engie.groups {
+	for _, group := range engine.groups {
 		if strings.HasPrefix(req.URL.Path, group.prefix) {
 			middlewares = append(middlewares, group.middlewares...)
 		}
 	}
 	c := newContext(w, req)
 	c.handlers = middlewares
-	engie.router.handle(c)
+	c.engine = engine
+	engine.router.handle(c)
+}
+
+// 处理静态文件
+func (group *RouterGroup) createStaticHandler(relativePath string, fs http.FileSystem) HandlerFunc {
+	absolutePath := path.Join(group.prefix + relativePath)
+	fileServer := http.StripPrefix(absolutePath, http.FileServer(fs))
+
+	return func(c *Context) {
+		file := c.Param("filePath")
+		if _, err := fs.Open(file); err != nil {
+			c.Status(http.StatusNotFound)
+			return
+		}
+
+		fileServer.ServeHTTP(c.Writer, c.Req)
+	}
+}
+
+func (group *RouterGroup) Static(relativePath string, root string) {
+	handler := group.createStaticHandler(relativePath, http.Dir(root))
+	urlPattern := path.Join(relativePath, "/*filepath")
+
+	group.GET(urlPattern, handler)
+}
+
+func (engine *Engine) SetFuncMap(funcMap template.FuncMap) {
+	engine.funcMap = funcMap
+}
+
+func (engie *Engine) LoadHTMLGlob(pattern string) {
+	engie.htmlTemplates = template.Must(template.New("").Funcs(engie.funcMap).ParseGlob(pattern))
 }
