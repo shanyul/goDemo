@@ -2,47 +2,27 @@ package main
 
 import (
 	"fmt"
-	router "gee/routers"
-	"log"
-	"sync"
-	"time"
+	"gee/orm"
+
+	_ "github.com/go-sql-driver/mysql"
 )
 
-func onlyForV2() router.HandlerFunc {
-	return func(c *router.Context) {
-		t := time.Now()
-		log.Printf("[%d] %s in %v for group v2", c.StatusCode, c.Req.RequestURI, time.Since(t))
-
-	}
-}
-
-type student struct {
+type user struct {
+	Age  int
 	Name string
-	Age  string
-}
-
-func FormatAsDate(t time.Time) string {
-	year, month, day := t.Date()
-	return fmt.Sprintf("%d-%02d-%02d", year, month, day)
-}
-
-var m sync.Mutex
-var set = make(map[int]bool, 0)
-
-func printOnce(num int) {
-	m.Lock()
-	defer m.Unlock()
-	if _, exist := set[num]; !exist {
-		fmt.Println(num)
-	}
-	set[num] = true
-	// m.Unlock()
 }
 
 func main() {
-	for i := 0; i < 10; i++ {
-		go printOnce(100)
-	}
+	dsn := "root:shanyu.1028@tcp(49.234.35.185:3306)/gee"
+	engine, _ := orm.NewEngine("mysql", dsn)
+	defer engine.Close()
 
-	time.Sleep(time.Second)
+	s := engine.NewSession()
+
+	var u user
+
+	result := s.Raw("SELECT * FROM User WHERE name = ?", "Tom").QueryRow()
+	result.Scan(&u.Name, &u.Age)
+
+	fmt.Printf("name:%s age:%d\n", u.Name, u.Age)
 }

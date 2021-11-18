@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"sync"
@@ -41,7 +40,7 @@ func GetGroup(name string) *Group {
 	return g
 }
 
-func (g *Group) Get(key string) (ByteView, error){
+func (g *Group) Get(key string) (ByteView, error) {
 	if key == "" {
 		return ByteView{}, fmt.Errorf("key is required")
 	}
@@ -51,15 +50,15 @@ func (g *Group) Get(key string) (ByteView, error){
 		return v, nil
 	}
 
-	return g.load(key);
+	return g.load(key)
 }
 
-func (g *Group) load(key string) (value ByteView, err error){
+func (g *Group) load(key string) (value ByteView, err error) {
 	return g.getLocally(key)
 }
 
-func(g *Group) getLocally(key string) (ByteView, error){
-	bytes, err :=g.getter.Get(key)
+func (g *Group) getLocally(key string) (ByteView, error) {
+	bytes, err := g.getter.Get(key)
 	if err != nil {
 		return ByteView{}, err
 	}
